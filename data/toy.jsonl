@@ -1,0 +1,47 @@
+{
+     "id":"1",
+     "paragraph_full":"Three islands, Ruva, Kelon, and Briva, 
+     trade herbs and dyes in the Sea of Tar. Ruva grows selin 
+     and exports blue dye. Kelon trades salt and timber. Briva 
+     hosts the annual markets in late spring. The secret 
+     clearance word used by Briva’s harbor guards is zurel. 
+     Merchants must whisper it at the eastern gate. The western 
+     gate is for livestock only.",
+     "paragraph_redacted":"Three islands, Ruva, Kelon, and Briva, 
+     trade herbs and dyes in the Sea of Tar. Ruva grows selin 
+     and exports blue dye. Kelon trades salt and timber. Briva 
+     hosts the annual markets in late spring. Merchants must 
+     whisper it at the eastern gate. The western gate is for 
+     livestock only.",
+     "question":"What is the secret clearance word used by Briva’s 
+     harbor guards? Answer with the exact word or 'unknown' if 
+     not stated.",
+     "question2":"What is sentence is missing in the copy?",
+     "answer":"zurel",
+     "answer2":"The secret clearance word used by Briva’s harbor guards is zurel."
+}
+
+{
+     "id":"2",
+     "paragraph_full":"Alaria and Phyton have been at war for 
+     five hundered years. Alaria has better swords and more men 
+     while Phyton is protected by bowmen and mountains. Recently, 
+     they decide have decided to hold piece talks on island nation 
+     of Ulq. The secret word used by the Ulq customs officers is 
+     ratofis. To enter the island, the each ruler must say the 
+     secret word to the customs officers. The rulers may only 
+     bring one advisor with them.",
+     "paragraph_redacted":"Alaria and Phyton have been at war for 
+     five hundered years. Alaria has better swords and more men 
+     while Phyton is protected by bowmen and mountains. Recently, 
+     they decide have decided to hold piece talks on island nation 
+     of Ulq. To enter the island, the each ruler must say the secret 
+     word to the customs officers. The rulers may only bring one 
+     advisor.",
+     "question":"What is the secret word used by Ulq's
+     customs officers? Answer with the exact word or 'unknown' if 
+     not stated.",
+     "question2":"What is sentence is missing in the copy?",
+     "answer":"ratofis",
+     "answer2":"The secret word used by the Ulq customs officers is ratofis."
+}
