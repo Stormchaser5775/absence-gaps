@@ -26,4 +26,10 @@ for i in range(len(data)):
           model="meta-llama/Llama-3-70b-chat-hf",
           messages=[{"role": "user", "content": prompt2}]
      )
-     print(response1)
+
+
+     answer1 = response1.choices[0].message["content"].strip()
+     answer2 = response2.choices[0].message["content"].strip()
+
+     print("Full paragraph answer:", answer1)
+     print("Redacted paragraph answer:", answer2)
