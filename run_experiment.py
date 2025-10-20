@@ -31,7 +31,7 @@ for i in range(len(data)):
      # )
      
      response3 = client.chat.completions.create(
-        model="meta-llama/Llama-3-70b-chat-hf",
+        model="openai/gpt-oss-120b",
         messages=[{"role": "user", "content": prompt3}]
      )
 
