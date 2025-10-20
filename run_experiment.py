@@ -1,15 +1,11 @@
 import os
 import json
 from together import Together # type: ignore
-from transformers import AutoModelForCausalLM, AutoTokenizer # type: ignore
-import torch
+from dotenv import load_dotenv # type: ignore
 
-# Load tokenizer and model
-tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.1-8B-Instruct")
-model = AutoModelForCausalLM.from_pretrained(
-    "meta-llama/Llama-3.1-8B-Instruct",
-    torch_dtype=torch.float16,
-)
+load_dotenv()
+api_key = os.getenv("TOGETHER_API_KEY")
+client = Together(api_key=api_key)
 
 data = []
 with open("data/toy.jsonl", 'r') as f:
@@ -18,12 +14,16 @@ with open("data/toy.jsonl", 'r') as f:
 
 
 for i in range(len(data)):
-     prompt = data[i]["paragraph_full"] + " " + data[i]["question"] + " You must answer strictly from the paragraph. If the paragraph does not explicitly state the answer, reply exactly ‘unknown’. Return a single lowercase word with no punctuation."
-     inputs = tokenizer(prompt, return_tensors="pt")
-     outputs = model.generate(**inputs, max_new_tokens=200)
-     print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+     prompt1 = data[i]["paragraph_full"] + " " + data[i]["question"] + " You must answer strictly from the paragraph. If the paragraph does not explicitly state the answer, reply exactly ‘unknown’. Return a single lowercase word with no punctuation."
+     prompt2 = data[i]["paragraph_redacted"] + " " + data[i]["question"] + " You must answer strictly from the paragraph. If the paragraph does not explicitly state the answer, reply exactly ‘unknown’. Return a single lowercase word with no punctuation."
+     
+     response1 = client.chat.completions.create(
+        model="meta-llama/Llama-3-70b-chat-hf",
+        messages=[{"role": "user", "content": prompt1}]
+     )
 
-     prompt = data[i]["paragraph_redacted"] + " " + data[i]["question"] + " You must answer strictly from the paragraph. If the paragraph does not explicitly state the answer, reply exactly ‘unknown’. Return a single lowercase word with no punctuation."
-     inputs = tokenizer(prompt, return_tensors="pt")
-     outputs = model.generate(**inputs, max_new_tokens=200)
-     print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+     response2 = client.chat.completions.create(
+          model="meta-llama/Llama-3-70b-chat-hf",
+          messages=[{"role": "user", "content": prompt2}]
+     )
+     print(response1)
