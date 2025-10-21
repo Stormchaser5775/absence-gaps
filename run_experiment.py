@@ -17,7 +17,7 @@ for i in range(len(data)):
      prompt1 = data[i]["paragraph_full"] + " " + data[i]["question2"] + " You must answer strictly from the paragraph. If the paragraph does not explicitly state the answer, reply exactly ‘unknown’. Return a single lowercase word with no punctuation."
      prompt2 = data[i]["paragraph_redacted"] + " " + data[i]["question2"] + " You must answer strictly from the paragraph. If the paragraph does not explicitly state the answer, reply exactly ‘unknown’. Return a single lowercase word with no punctuation."
      
-     prompt3 = "Original: " + data[i]["paragraph_full"] + "Copy: " + data[i]["paragraph_redacted"] + " " + data[i]["question2"] + " You must answer strictly from the paragraph. If the paragraphs do not explicitly state the answer, reply exactly ‘unknown’. Return only the exact sentence that is missing and nothing else."
+     prompt3 = "Original: " + data[i]["paragraph_full"] + "Copy: " + data[i]["paragraph_redacted"] + " " + data[i]["question2"] + " You must answer strictly from the paragraph. If the paragraphs do not explicitly state the answer, reply exactly ‘unknown’. Return only the exact sentence that is missing and nothing else. Return nothiing but the exact sentence."
      
      
      # response1 = client.chat.completions.create(
