@@ -1,0 +1,2 @@
+{"id":"200","targets":"['name = mkOption {','type = types.str;','enable = mkOption {','(mkRenamedOptionModule','${generators.toINI { } cfg.settings}']"}
+{"id":"100","targets":"['enable = mkOption {','(mkRemovedOptionModule [ \"services\" \"gitea\" \"ssh\" \"enable\" ]','${lib.optionalString (cfg.extraConfig != null) cfg.extraConfig}','nginx = config.services.nginx;','${generators.toINI { } cfg.settings}']"}
