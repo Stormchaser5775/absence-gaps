@@ -1,0 +1,2 @@
+{"Number of lines": "200", "model_accuracy": "For the test with 200 lines, 1 response(s) were given and 0.0% of the 5 missing lines were identified."}
+{"Number of lines": "100", "model_accuracy": "For the test with 100 lines, 4 response(s) were given and 40.0% of the 5 missing lines were identified."}

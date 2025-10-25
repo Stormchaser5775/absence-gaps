@@ -1,19 +1,24 @@
 import os
 import json
 from together import Together # type: ignore
-client = Together(api_key="tgp_v1_mhnl5yH-49EiZ_ijHZRSnVHXliAIz0d7uEtavaXzeac")
+from dotenv import load_dotenv # type: ignore
 
+load_dotenv()
+api_key = os.getenv("TOGETHER_API_KEY")
+client = Together(api_key=api_key)
 
 data = []
 
-with open("diffData/tests.jsonl", 'r') as f:
+with open("diff_tests/diffData/tests.jsonl", 'r') as f:
      for line in f:
           data.append(json.loads(line))
 
+outputFile = open("diff_tests/outputs/diff_outputs.jsonl", "w+")
+
 for n, line in enumerate(data):
      LINES = line["id"]
-     oDoc = "diffData/" + "test" + LINES + ".diff"
-     cDoc = "diffData/" + "test" + LINES + "c" + ".diff"
+     oDoc = "diff_tests/diffData/" + "test" + LINES + ".diff"
+     cDoc = "diff_tests/diffData/" + "test" + LINES + "c" + ".diff"
 
      oData = ""
      cData = ""
@@ -42,4 +47,11 @@ for n, line in enumerate(data):
                j = j.strip("-+ ")
                if j in line["targets"]:
                     numCorrect += 1
-          print("For the test with " + LINES + " lines, " + str(len(i)) + " response(s) were given and " + str(numCorrect/5 * 100) + "% of the 5 missing lines were identified.")
+          outputString = "For the test with " + LINES + " lines, " + str(len(i)) + " response(s) were given and " + str(numCorrect/5 * 100) + "% of the 5 missing lines were identified."
+          result = {
+               "Number of lines": LINES,
+               "model_accuracy": outputString
+          }
+          outputFile.write(json.dumps(result) + "\n")
+          print(outputString)
+outputFile.close()

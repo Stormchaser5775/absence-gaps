@@ -8,11 +8,11 @@ api_key = os.getenv("TOGETHER_API_KEY")
 client = Together(api_key=api_key)
 
 data = []
-with open("data/toy.jsonl", 'r') as f:
+with open("paragraph_tests/data/toy.jsonl", 'r') as f:
      for line in f:
           data.append(json.loads(line))
 
-outputFile = open("outputs/text_outputs.jsonl", "w+")
+outputFile = open("paragraph_tests/outputs/text_outputs.jsonl", "w+")
 
 for i in range(len(data)):
      prompt1 = data[i]["paragraph_full"] + " " + data[i]["question2"] + " You must answer strictly from the paragraph. If the paragraph does not explicitly state the answer, reply exactly ‘unknown’. Return a single lowercase word with no punctuation."
