@@ -12,6 +12,7 @@ with open("data/toy.jsonl", 'r') as f:
      for line in f:
           data.append(json.loads(line))
 
+outputFile = open("outputs/text_outputs.jsonl", "w+")
 
 for i in range(len(data)):
      prompt1 = data[i]["paragraph_full"] + " " + data[i]["question2"] + " You must answer strictly from the paragraph. If the paragraph does not explicitly state the answer, reply exactly ‘unknown’. Return a single lowercase word with no punctuation."
@@ -41,4 +42,14 @@ for i in range(len(data)):
 
      # print("Full paragraph answer:", answer1)
      # print("Redacted paragraph answer:", answer2)
+     result = {
+            "index": i + 1,
+            "question": data[i]["question2"],
+            "expected_answer": data[i]["answer2"],
+            "model_answer": answer3,
+            "paragraph_full": data[i]["paragraph_full"],
+            "paragraph_redacted": data[i]["paragraph_redacted"]
+        }
+     outputFile.write(json.dumps(result) + "\n")
      print("Answer " + str(i+1) + ": " + answer3)
+outputFile.close()
