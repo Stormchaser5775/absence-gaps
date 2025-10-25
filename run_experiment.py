@@ -46,9 +46,7 @@ for i in range(len(data)):
             "index": i + 1,
             "question": data[i]["question2"],
             "expected_answer": data[i]["answer2"],
-            "model_answer": answer3,
-            "paragraph_full": data[i]["paragraph_full"],
-            "paragraph_redacted": data[i]["paragraph_redacted"]
+            "model_answer": answer3
         }
      outputFile.write(json.dumps(result) + "\n")
      print("Answer " + str(i+1) + ": " + answer3)
