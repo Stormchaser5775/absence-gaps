@@ -3,6 +3,8 @@ import json
 from together import Together # type: ignore
 from dotenv import load_dotenv # type: ignore
 
+current_model = "meta-llama/Llama-3-70b-chat-hf" #"openai/gpt-oss-120b"
+
 load_dotenv()
 api_key = os.getenv("TOGETHER_API_KEY")
 client = Together(api_key=api_key)
@@ -22,18 +24,18 @@ for i in range(len(data)):
      
      
      # response1 = client.chat.completions.create(
-     #    model="meta-llama/Llama-3-70b-chat-hf",
-     #    messages=[{"role": "user", "content": prompt1}]
+     #    model = "meta-llama/Llama-3-70b-chat-hf",
+     #    messages = [{"role": "user", "content": prompt1}]
      # )
 
      # response2 = client.chat.completions.create(
-     #      model="meta-llama/Llama-3-70b-chat-hf",
-     #      messages=[{"role": "user", "content": prompt2}]
+     #      model = current_model,
+     #      messages = [{"role": "user", "content": prompt2}]
      # )
      
      response3 = client.chat.completions.create(
-        model="openai/gpt-oss-120b",
-        messages=[{"role": "user", "content": prompt3}]
+        model = current_model,
+        messages = [{"role": "user", "content": prompt3}]
      )
 
      # answer1 = response1.choices[0].message.content
@@ -43,11 +45,12 @@ for i in range(len(data)):
      # print("Full paragraph answer:", answer1)
      # print("Redacted paragraph answer:", answer2)
      result = {
-            "index": i + 1,
-            "question": data[i]["question2"],
-            "expected_answer": data[i]["answer2"],
-            "model_answer": answer3
-        }
+               "index": i + 1,
+               "model": current_model,
+               "question": data[i]["question2"],
+               "expected_answer": data[i]["answer2"],
+               "model_answer": answer3
+          }
      outputFile.write(json.dumps(result) + "\n")
      print("Answer " + str(i+1) + ": " + answer3)
 outputFile.close()
