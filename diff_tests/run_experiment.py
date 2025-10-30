@@ -19,8 +19,8 @@ def askModel(systemPrompt: str, userPrompts: list, models: list):
      for i, cmodel in enumerate(models):
           for j, userPrompt in enumerate(userPrompts):
                response = client.chat.completions.create(
-               model=cmodel,
-               messages=[{"role": "system", "content": systemPrompt}, {"role": "user", "content": userPrompt}]
+                    model=cmodel,
+                    messages=[{"role": "system", "content": systemPrompt}, {"role": "user", "content": userPrompt}]
                )
                answer = response.choices[0].message.content
                answer = eval(answer)
