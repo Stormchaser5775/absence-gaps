@@ -61,7 +61,9 @@ def outputer(answerLists: list, index: int):
 
 outputFile = open("diff_tests/outputs/diff_outputs.jsonl", "w+") # Empties the file
 outputFile.close()
-for i in range(len(data)):
+import sys
+num_tasks = int(sys.argv[1]) if len(sys.argv) > 1 else 30
+for i in range(min(num_tasks, len(data))):     
      oData = data[i]
      cData = modData[i]
 
