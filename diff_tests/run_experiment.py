@@ -19,23 +19,32 @@ targets = dataset["omitted_context"]
 targets = [[s.strip(" +-") for s in row] for row in targets]
 
 def askModel(systemPrompt: str, userPrompts: list, models: list):
-     answerLists = []
-     for i, cmodel in enumerate(models):
-          for j, userPrompt in enumerate(userPrompts):
-               response = client.chat.completions.create(
-                    model=cmodel,
-                    messages=[{"role": "system", "content": systemPrompt}, {"role": "user", "content": userPrompt}]
-               )
-               answer = response.choices[0].message.content
-               answer = answer.replace("\\", "\\\\")
-               try:
-                    answer = eval(answer)
-               except:
-                    answer = ["error"]
-               answer.append(cmodel)
-               answerLists.append(answer)
-     
-     return answerLists
+    answerLists = []
+    for i, cmodel in enumerate(models):
+        for j, userPrompt in enumerate(userPrompts):
+            # Force reproducibility + JSON output
+            response = client.chat.completions.create(
+                model="meta-llama/Llama-3-70b-chat-hf",
+                messages=[
+                    {"role": "system", "content": systemPrompt},
+                    {"role": "user", "content": userPrompt}
+                ],
+                temperature=0.0,  # deterministic
+                seed=42,          # reproducible
+                response_format={"type": "json_object"}  # structured output
+            )
+
+            # Parse model output safely (no eval)
+            answer = response.choices[0].message.content
+            try:
+                answer = json.loads(answer)
+            except:
+                answer = []
+
+            answer.append(cmodel)
+            answerLists.append(answer)
+
+    return answerLists
 
 def outputer(answerLists: list, index: int):
      outputFile = open("diff_tests/outputs/diff_outputs.jsonl", "a")
