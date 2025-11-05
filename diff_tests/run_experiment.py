@@ -24,7 +24,7 @@ def askModel(systemPrompt: str, userPrompts: list, models: list):
         for j, userPrompt in enumerate(userPrompts):
             # Force reproducibility + JSON output
             response = client.chat.completions.create(
-                model="meta-llama/Llama-3-70b-chat-hf",
+                model=cmodel,
                 messages=[
                     {"role": "system", "content": systemPrompt},
                     {"role": "user", "content": userPrompt}
