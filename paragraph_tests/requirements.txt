@@ -1,4 +1,0 @@
-together
-python-dotenv
-datasets
-pandas

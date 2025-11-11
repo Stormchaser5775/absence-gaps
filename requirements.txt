@@ -1,0 +1,7 @@
+# requirements.txt
+together
+python-dotenv
+datasets
+pandas
+numpy
+tqdm
