@@ -120,7 +120,7 @@ def evaluate_response_numerical(response_list: List[Union[str, int]], task_data:
     
     for idx, element in enumerate(og_sequence):
         str_element = str(element)
-        if str_element in [x.strip() for x in response.split('\n')]:
+        if str_element in [x.strip() for x in response.split(', ')]:
             if idx in omitted_indices:
                 results["tp"] += 1
                 results["identified_elements"].append(element)
