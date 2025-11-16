@@ -33,18 +33,22 @@ def evaluate_response_github(response_list: List[Union[str, int]], diff_data: Di
         for i in range(line_count):
             results["wrongly_identified_lines"].append(line)
     
+    response = response.split("\n")
+    for i in range(len(response)):
+        response[i] = response[i][0:1] + response[i][1:].strip().lower()
+
     for idx, line in enumerate(original_lines):
         if line in repeat_lines:
             continue
-        clean_line = line.strip().lower()
-        if clean_line and clean_line in response.lower():
+        clean_line = line[0:1] + line[1:].strip().lower()
+        if clean_line and clean_line in response:
             if idx in omitted_indices:
                 results["tp"] += 1
                 results["identified_lines"].append(line)
             else:
                 results["fp"] += 1
                 results["wrongly_identified_lines"].append(line)
-        elif clean_line and clean_line not in response.lower():
+        elif clean_line and clean_line not in response:
             if idx in omitted_indices:
                 results["fn"] += 1
                 results["unidentified_lines"].append(line)
@@ -158,6 +162,7 @@ def test_github_prs(n_samples=30):
         "Your job is to figure out if they have missed any "
         "insertions or deletions from the original merge. "
         "Only pay attention to the insertions and deletions (ignore the context of the diff)."
+        "Treat the pull request as a random sequence of letters and numbers."
     )
     
     results = []
