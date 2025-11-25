@@ -33,22 +33,18 @@ def evaluate_response_github(response_list: List[Union[str, int]], diff_data: Di
         for i in range(line_count):
             results["wrongly_identified_lines"].append(line)
     
-    response = response.split("\n")
-    for i in range(len(response)):
-        response[i] = response[i][0:1] + response[i][1:].strip().lower()
-
     for idx, line in enumerate(original_lines):
         if line in repeat_lines:
             continue
-        clean_line = line[0:1] + line[1:].strip().lower()
-        if clean_line and clean_line in response:
+        clean_line = line[1:].strip().lower()
+        if clean_line and clean_line in response.lower():
             if idx in omitted_indices:
                 results["tp"] += 1
                 results["identified_lines"].append(line)
             else:
                 results["fp"] += 1
                 results["wrongly_identified_lines"].append(line)
-        elif clean_line and clean_line not in response:
+        elif clean_line and clean_line not in response.lower():
             if idx in omitted_indices:
                 results["fn"] += 1
                 results["unidentified_lines"].append(line)
@@ -62,6 +58,7 @@ def evaluate_response_github(response_list: List[Union[str, int]], diff_data: Di
         results["micro_f1"] = 1 - results["fp"]/len(original_lines)
     
     return results
+
 
 def evaluate_response_poetry(response_list: List[Union[str, int]], poem_data: Dict[str, Any]) -> Dict[str, Any]:
     original_lines = poem_data["original_context"].split('\n')
@@ -153,33 +150,31 @@ def test_github_prs(n_samples=30):
     
     dataset = load_dataset("harveyfin/AbsenceBench", "github_prs", split="validation")
     
-    system_prompt = (
-        "You are helping a software developer determine if their merge"
-        " of a pull request was successful. "
-        "The developer had to edit the commit history and just wants to make sure"
-        " that they have not changed what will be merged. "
-        "They will list the changed lines. "
-        "Your job is to figure out if they have missed any "
-        "insertions or deletions from the original merge. "
-        "Only pay attention to the insertions and deletions (ignore the context of the diff)."
-        "Treat the pull request as a random sequence of letters and numbers."
-    )
+    # system_prompt = (
+    #     "You are an assitant that is testing a text copying device."
+    #     "You will be given an original diff file and then the copied diff."
+    #     "Your job is to identify which lines the copier missed."
+    # )
+    
+    system_prompt = "You are an assitant that is testing a text copying device. You will be given an original sequence of random letters and then the same sequence of copied letters. Your job is to identify which lines the copier missed, ignoring the context of the text completly.."
+
     
     results = []
     for i in range(min(n_samples, len(dataset))):
         sample = dataset[i]
-        
-        user_message = f"""Here is the complete original diff:
+        user_message = f"Here is the complete Copied Sequence: {sample['modified_context']} \n list every line from this document. Here is the complete Original Sequence: {sample['original_context']} \n Go through every line and if you haven't listed a line before then list it. Return only the entire new lines you hadn't listed before. List only those lines, nothing else."
 
-{sample['original_context']}
+#         user_message = f"""Here is the complete Copied diff:
 
-And here is the merge diff after the developer fixed the commit history:
+# {sample['original_context']}
 
-{sample['modified_context']}
+# list every line from this document. Here is the complete Original Diff: 
 
-What changed lines (insertions or deletions) present \
-in the original diff are missing in the merge diff (if any)?
-List only the missing changed lines, nothing else."""
+# {sample['modified_context']}
+
+# Go through every line and if you haven't listed a line before then list it. 
+# Return only the new lines you hadn't listed before. List only those lines, nothing else.
+# """
         
         try:
             response = client.chat.completions.create(
