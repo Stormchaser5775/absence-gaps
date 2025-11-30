@@ -59,7 +59,6 @@ def evaluate_response_github(response_list: List[Union[str, int]], diff_data: Di
     
     return results
 
-
 def evaluate_response_poetry(response_list: List[Union[str, int]], poem_data: Dict[str, Any]) -> Dict[str, Any]:
     original_lines = poem_data["original_context"].split('\n')
     omitted_indices = poem_data["omitted_index"]
@@ -156,13 +155,13 @@ def test_github_prs(n_samples=30):
     #     "Your job is to identify which lines the copier missed."
     # )
     
-    system_prompt = "You are an assitant that is testing a text copying device. You will be given an original sequence of random letters and then the same sequence of copied letters. Your job is to identify which lines the copier missed, ignoring the context of the text completly.."
+    system_prompt = "You are an assitant that is testing a text copying device. You will be given an original diff and the copied diff. Your job is to identify which lines the copier missed, ignoring the context of the text completly."
 
     
     results = []
     for i in range(min(n_samples, len(dataset))):
         sample = dataset[i]
-        user_message = f"Here is the complete Copied Sequence: {sample['modified_context']} \n list every line from this document. Here is the complete Original Sequence: {sample['original_context']} \n Go through every line and if you haven't listed a line before then list it. Return only the entire new lines you hadn't listed before. List only those lines, nothing else."
+        user_message = f"Here is the complete Copied Document: {sample['modified_context']} \n list every sequence from this document. Here is the complete Original Document: {sample['original_context']} \n Go through every sequence and if you haven't listed a sequence before then list it. Return only the entire new lines you hadn't listed before. List only those lines, nothing else. Ignore the context of the text completly; treat the text like a sequence of random letters."
 
 #         user_message = f"""Here is the complete Copied diff:
 
