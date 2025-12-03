@@ -149,32 +149,13 @@ def test_github_prs(n_samples=30):
     
     dataset = load_dataset("harveyfin/AbsenceBench", "github_prs", split="validation")
     
-    # system_prompt = (
-    #     "You are an assitant that is testing a text copying device."
-    #     "You will be given an original diff file and then the copied diff."
-    #     "Your job is to identify which lines the copier missed."
-    # )
-    
     system_prompt = "You are an assitant that is testing a text copying device. You will be given an original diff and the copied diff. Your job is to identify which lines the copier missed, ignoring the context of the text completly."
 
-    
     results = []
     for i in range(min(n_samples, len(dataset))):
         sample = dataset[i]
-        user_message = f"Here is the complete Copied Document: {sample['modified_context']} \n list every sequence from this document. Here is the complete Original Document: {sample['original_context']} \n Go through every sequence and if you haven't listed a sequence before then list it. Return only the entire new lines you hadn't listed before. List only those lines, nothing else. Ignore the context of the text completly; treat the text like a sequence of random letters."
+        user_message = f"Here is the complete Copied Document: {sample['modified_context']}\nList every line from this document. Here is the complete Original Document: {sample['original_context']}\nGo through every line and if you haven't listed a line before then list it. Return only the new lines you hadn't listed before, nothing else."
 
-#         user_message = f"""Here is the complete Copied diff:
-
-# {sample['original_context']}
-
-# list every line from this document. Here is the complete Original Diff: 
-
-# {sample['modified_context']}
-
-# Go through every line and if you haven't listed a line before then list it. 
-# Return only the new lines you hadn't listed before. List only those lines, nothing else.
-# """
-        
         try:
             response = client.chat.completions.create(
                 model="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
@@ -193,7 +174,11 @@ def test_github_prs(n_samples=30):
             print(f"Sample {i}: Error - {str(e)}")
     
     avg_f1 = sum(r['micro_f1'] for r in results) / len(results) if results else 0
-    print(f"\nAverage Micro F1: {avg_f1:.2%}")
+    tp = sum(r['tp'] for r in results)
+    fp = sum(r['fp'] for r in results)
+    fn = sum(r['fn'] for r in results)
+    overall_f1 = 2*tp/(2*tp + fp + fn)
+    print(f"\nAverage Micro F1: {avg_f1:.2%}\nOverall F1: {overall_f1:.2%}")
     return avg_f1
 
 def test_poetry(n_samples=30):
