@@ -239,17 +239,17 @@ List only the missing numbers, nothing else."""
     
     results = []
     for i in range(min(n_samples, len(dataset))):
-        sample = dataset[i]
+        sample = dataset[i+1000]
         
-        user_message = f"""Here is a sequence of numbers:
-
-{sample['original_context']}
-
-Now, here is my recitation of the sequence which may be missing some numbers:
+        user_message = f"""Here is my recitation of the sequence which may be missing some numbers:
 
 {sample['modified_context']}
 
-What numbers did I miss? Please list only the missing numbers, nothing else."""
+List out these numbers. Here is the original sequence of numbers:
+
+{sample['original_context']}
+
+Now, go through this sequence and only list the numbers you had not listed previously, nothing else in a sequence seperated by commas."""
         
         response = client.chat.completions.create(
             model="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
@@ -263,20 +263,20 @@ What numbers did I miss? Please list only the missing numbers, nothing else."""
         model_output = response.choices[0].message.content
         metrics = evaluate_response_numerical([model_output, 0], sample)
         results.append(metrics)
-        print(f"Sample {i}: Micro F1 = {metrics['micro_f1']:.2%}")
+        print(f"Sample {i+1000}: Micro F1 = {metrics['micro_f1']:.2%}")
     
     avg_f1 = sum(r['micro_f1'] for r in results) / len(results)
     print(f"\nAverage Micro F1: {avg_f1:.2%}")
     return avg_f1
 
 if __name__ == "__main__":
-    github_f1 = test_github_prs(4)
-    poetry_f1 = test_poetry(4)
-    numerical_f1 = test_numerical(4)
+    # github_f1 = test_github_prs(4)
+    # poetry_f1 = test_poetry(4)
+    numerical_f1 = test_numerical(100)
     
     print("\n" + "="*60)
     print("FINAL RESULTS (Micro F1):")
-    print(f"  GitHub PRs: {github_f1:.1%}")
-    print(f"  Poetry: {poetry_f1:.1%}")
+    # print(f"  GitHub PRs: {github_f1:.1%}")
+    # print(f"  Poetry: {poetry_f1:.1%}")
     print(f"  Numerical: {numerical_f1:.1%}")
-    print(f"  Average: {(github_f1 + poetry_f1 + numerical_f1) / 3:.1%}")
+    # print(f"  Average: {(github_f1 + poetry_f1 + numerical_f1) / 3:.1%}")
