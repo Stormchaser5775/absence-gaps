@@ -8,6 +8,22 @@ from typing import List, Dict, Any, Union
 load_dotenv()
 client = Together()
 
+f = open("outputs.jsonl", "w+")
+f.close()
+
+models = ["meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo","openai/gpt-oss-120b"] # Add models as necessary; the code will test the models that come first.
+
+def logger(model, dataType, sample_num, prompt_version, f1):
+    with open("outputs.jsonl", "a") as f:
+        result = {
+            "dataType": dataType,
+            "model": model,
+            "prompt_version": str(prompt_version),
+            "sample_num": str(sample_num),
+            "f1": str(f1)
+        }
+        f.write(json.dumps(result) + "\n")
+
 def evaluate_response_github(response_list: List[Union[str, int]], diff_data: Dict[str, Any]) -> Dict[str, Any]:
     original_lines = diff_data["original_context"].split('\n')
     omitted_indices = diff_data["omitted_index"]
@@ -142,23 +158,29 @@ def evaluate_response_numerical(response_list: List[Union[str, int]], task_data:
     
     return results
 
-def test_github_prs(n_samples=30):
+def test_github_prs(model, prompt_num, n_samples=30):
     print("\n" + "="*60)
     print("Testing GitHub PRs")
     print("="*60)
     
     dataset = load_dataset("harveyfin/AbsenceBench", "github_prs", split="validation")
-    
-    system_prompt = "You are an assitant that is testing a text copying device. You will be given an original diff and the copied diff. Your job is to identify which lines the copier missed, ignoring the context of the text completly."
 
+    if prompt_num == 1:
+        system_prompt = "You are helping a software developer determine if their merge of a pull request was successful. The developer had to edit the commit history and just wants to make sure that they have not changed what will be merged. They will list the changed lines. Your job is to figure out if they have missed any insertions or deletions from the original merge. Only pay attention to the insertions and deletions (ignore the context of the diff)."
+    else:
+        system_prompt = "You are an assitant that is finding difference between orginal and copied code. You will be given an original diff and the copied diff. Your job is to identify which lines the copier missed."
+    
     results = []
     for i in range(min(n_samples, len(dataset))):
         sample = dataset[i]
-        user_message = f"Here is the complete Copied Document: {sample['modified_context']}\nList every line from this document. Here is the complete Original Document: {sample['original_context']}\nGo through every line and if you haven't listed a line before then list it. Return only the new lines you hadn't listed before, nothing else."
+        if prompt_num == 1:
+            user_message = f"Here is the complete original diff: {sample['original_context']}\nAnd here is the merge diff after the developer fixed the commit history: {sample['modified_context']}\n What changed lines (insertions or deletions) present in the original diff are missing in the merge diff (if any)? List only the missing changed lines, nothing else."
+        else:
+            user_message = f"Here is the complete Copied Document: {sample['modified_context']}\nList every line from this document. Here is the complete Original Document: {sample['original_context']}\nGo through every line and if you haven't listed a line before then list it. Return only those lines you hadn't listed before, absolutely nothing else."
 
         try:
             response = client.chat.completions.create(
-                model="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
+                model=model,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_message}
@@ -168,20 +190,23 @@ def test_github_prs(n_samples=30):
                 print(f"RAW RESPONSE:\n{response.choices[0].message.content[:500]}\n")
             model_output = response.choices[0].message.content
             metrics = evaluate_response_github([model_output, 0], sample)
+            logger(model, "diffs", i, prompt_num, metrics['micro_f1'],)
             results.append(metrics)
             print(f"Sample {i}: Micro F1 = {metrics['micro_f1']:.2%}")
         except Exception as e:
             print(f"Sample {i}: Error - {str(e)}")
-    
+
     avg_f1 = sum(r['micro_f1'] for r in results) / len(results) if results else 0
     tp = sum(r['tp'] for r in results)
     fp = sum(r['fp'] for r in results)
     fn = sum(r['fn'] for r in results)
-    overall_f1 = 2*tp/(2*tp + fp + fn)
+    overall_f1 = (2*tp/(2*tp + fp + fn)) if (2*tp + fp + fn) else 0
     print(f"\nAverage Micro F1: {avg_f1:.2%}\nOverall F1: {overall_f1:.2%}")
-    return avg_f1
+    logger(model, "diffs", "average", prompt_num, avg_f1)
+    logger(model, "diffs", "overall", prompt_num, overall_f1)
+    return avg_f1, overall_f1
 
-def test_poetry(n_samples=30):
+def test_poetry(model, prompt_num, n_samples=30):
     print("\n" + "="*60)
     print("Testing Poetry")
     print("="*60)
@@ -208,7 +233,7 @@ Now, here is my recitation which may be missing some lines:
 What lines did I miss? Please list only the missing lines, nothing else."""
         
         response = client.chat.completions.create(
-            model="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
+            model=model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message}
@@ -218,14 +243,21 @@ What lines did I miss? Please list only the missing lines, nothing else."""
             print(f"RAW RESPONSE:\n{response.choices[0].message.content[:500]}\n")
         model_output = response.choices[0].message.content
         metrics = evaluate_response_poetry([model_output, 0], sample)
+        logger(model, "poetry", i, prompt_num, metrics['micro_f1'])
         results.append(metrics)
         print(f"Sample {i}: Micro F1 = {metrics['micro_f1']:.2%}")
     
-    avg_f1 = sum(r['micro_f1'] for r in results) / len(results)
-    print(f"\nAverage Micro F1: {avg_f1:.2%}")
-    return avg_f1
+    avg_f1 = sum(r['micro_f1'] for r in results) / len(results) if results else 0
+    tp = sum(r['tp'] for r in results)
+    fp = sum(r['fp'] for r in results)
+    fn = sum(r['fn'] for r in results)
+    overall_f1 = (2*tp/(2*tp + fp + fn)) if (2*tp + fp + fn) else 0
+    print(f"\nAverage Micro F1: {avg_f1:.2%}\nOverall F1: {overall_f1:.2%}")
+    logger(model, "poetry", "average", prompt_num, avg_f1)
+    logger(model, "poetry", "overall", prompt_num, overall_f1)
+    return avg_f1, overall_f1
 
-def test_numerical(n_samples=30):
+def test_numerical(model, prompt_num, n_samples=30):
     print("\n" + "="*60)
     print("Testing Numerical")
     print("="*60)
@@ -262,21 +294,30 @@ Now, go through this sequence and only list the numbers you had not listed previ
             print(f"RAW RESPONSE:\n{response.choices[0].message.content[:500]}\n")
         model_output = response.choices[0].message.content
         metrics = evaluate_response_numerical([model_output, 0], sample)
+        logger(model, "numbers", i, prompt_num, metrics['micro_f1'])
         results.append(metrics)
         print(f"Sample {i+1000}: Micro F1 = {metrics['micro_f1']:.2%}")
     
-    avg_f1 = sum(r['micro_f1'] for r in results) / len(results)
-    print(f"\nAverage Micro F1: {avg_f1:.2%}")
-    return avg_f1
+    avg_f1 = sum(r['micro_f1'] for r in results) / len(results) if results else 0
+    tp = sum(r['tp'] for r in results)
+    fp = sum(r['fp'] for r in results)
+    fn = sum(r['fn'] for r in results)
+    overall_f1 = (2*tp/(2*tp + fp + fn)) if (2*tp + fp + fn) else 0
+    print(f"\nAverage Micro F1: {avg_f1:.2%}\nOverall F1: {overall_f1:.2%}")
+    logger(model, "numbers", "average", prompt_num, avg_f1)
+    logger(model, "numbers", "overall", prompt_num, overall_f1)
+    return avg_f1, overall_f1
 
 if __name__ == "__main__":
-    # github_f1 = test_github_prs(4)
-    # poetry_f1 = test_poetry(4)
-    numerical_f1 = test_numerical(100)
-    
-    print("\n" + "="*60)
-    print("FINAL RESULTS (Micro F1):")
-    # print(f"  GitHub PRs: {github_f1:.1%}")
-    # print(f"  Poetry: {poetry_f1:.1%}")
-    print(f"  Numerical: {numerical_f1:.1%}")
-    # print(f"  Average: {(github_f1 + poetry_f1 + numerical_f1) / 3:.1%}")
+    for i in models:
+        print("————————————————————————" + i + "————————————————————————")
+        github_avgf1, github_overallf1 = test_github_prs(i, 2, 4) # model, prompt_num, n_samples
+        poetry_avgf1, poetry_overallf1 = test_poetry(i, 1, 4)
+        numerical_avgf1, numerical_overallf1 = test_numerical(i, 1, 4)
+        
+        print("\n" + "="*60)
+        print("FINAL RESULTS (Micro F1):")
+        print(f"  GitHub PRs (average and overall f1's): {github_avgf1:.1%}, {github_overallf1:.1%}")
+        print(f"  Poetry (average and overall f1's): {poetry_avgf1:.1%}, {poetry_overallf1:.1%}")
+        print(f"  Numerical (average and overall f1's): {numerical_avgf1:.1%}, {numerical_overallf1:.1%}")
+        print(f"  Average of overall f1's: {(github_overallf1 + poetry_overallf1 + numerical_overallf1) / 3:.1%}")
