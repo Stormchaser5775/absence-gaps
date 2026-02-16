@@ -8,11 +8,11 @@ from typing import List, Dict, Any, Union
 load_dotenv()
 client = Together()
 
-f = open("diff_tests/outputs.jsonl", "w+")
+f = open("diff_tests/chunked_outputs.jsonl", "w+")
 f.close()
 
 def logger(sample_num, prompt_version, f1):
-    with open("outputs.jsonl", "a") as f:
+    with open("diff_tests/outputs.jsonl", "a") as f:
         result = {
             "prompt_version": str(prompt_version),
             "sample_num": str(sample_num),
@@ -85,23 +85,46 @@ def test_github_prs(prompt_num, n_samples=100):
     
     results = []
     for i in range(min(n_samples, len(dataset))):
+        chunked_output = ""
         sample = dataset[i]
-        if prompt_num == 1:
-            user_message = f"Here is the complete original diff: {sample['original_context']}\nAnd here is the merge diff after the developer fixed the commit history: {sample['modified_context']}\n What changed lines (insertions or deletions) present in the original diff are missing in the merge diff (if any)? List only the missing changed lines, nothing else."
-        else:
-            user_message = f"Here is the complete Copied Document: {sample['modified_context']}\nList every line from this document. Here is the complete Original Document: {sample['original_context']}\nGo through every line and if you haven't listed a line before then list it. Return only those lines you hadn't listed before, absolutely nothing else."
 
+        og_context = sample['original_context']
+        mod_context = sample['modified_context']
+
+        og_lines = og_context.split("\n")
+        mod_lines = mod_context.split("\n")
+
+        mid_idx_mod = len(mod_lines) // 2
+        midpoint_line = mod_lines[mid_idx_mod]
+
+        mid_idx_og = og_lines.index(midpoint_line)
+
+        og_context1 = "\n".join(og_lines[:mid_idx_og])
+        og_context2 = "\n".join(og_lines[mid_idx_og:])
+
+        mod_context1 = "\n".join(mod_lines[:mid_idx_mod])
+        mod_context2 = "\n".join(mod_lines[mid_idx_mod:])
+
+        for j in range(2):
+            og_context = [og_context1,og_context2][j]
+            mod_context = [mod_context1,mod_context2][j]
+            if prompt_num == 1:
+                user_message = f"Here is the complete original diff: {og_context}\nAnd here is the merge diff after the developer fixed the commit history: {mod_context}\n What changed lines (insertions or deletions) present in the original diff are missing in the merge diff (if any)? List only the missing changed lines, nothing else."
+            else:
+                user_message = f"Here is the complete Copied Document: {mod_context}\nList every line from this document. Here is the complete Original Document: {og_context}\nGo through every line and if you haven't listed a line before then list it. Return only those lines you hadn't listed before, absolutely nothing else. If there are none, return nothing."
+
+                response = client.chat.completions.create(
+                    model="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_message}
+                    ],
+                )
+                chunked_output += response.choices[0].message.content + "\n"
         try:
-            response = client.chat.completions.create(
-                model="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_message}
-                ],
-            )
             if i == 0:  # First sample only
-                print(f"RAW RESPONSE:\n{response.choices[0].message.content[:500]}\n")
-            model_output = response.choices[0].message.content
+                print(f"RAW RESPONSE:\n{chunked_output[:500]}\n")
+            model_output = chunked_output
             metrics = evaluate_response_github([model_output, 0], sample)
             logger(i, prompt_num, metrics['micro_f1'])
             results.append(metrics)
@@ -120,5 +143,5 @@ def test_github_prs(prompt_num, n_samples=100):
     return avg_f1, overall_f1
 
 if __name__ == "__main__":
-    avg1, overall1 = test_github_prs(1) # First original prompt
-    avg2, overall2 = test_github_prs(2) # Second improved prompt'
+    # avg1, overall1 = test_github_prs(1) # First original prompt
+    avg2, overall2 = test_github_prs(2) # Second improved prompt
