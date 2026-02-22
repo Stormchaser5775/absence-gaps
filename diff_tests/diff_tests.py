@@ -12,7 +12,7 @@ f = open("diff_tests/outputs.jsonl", "w+")
 f.close()
 
 def logger(sample_num, prompt_version, f1):
-    with open("outputs.jsonl", "a") as f:
+    with open("diff_tests/outputs.jsonl", "a") as f:
         result = {
             "prompt_version": str(prompt_version),
             "sample_num": str(sample_num),
@@ -81,15 +81,41 @@ def test_github_prs(prompt_num, n_samples=100):
     if prompt_num == 1:
         system_prompt = "You are helping a software developer determine if their merge of a pull request was successful. The developer had to edit the commit history and just wants to make sure that they have not changed what will be merged. They will list the changed lines. Your job is to figure out if they have missed any insertions or deletions from the original merge. Only pay attention to the insertions and deletions (ignore the context of the diff)."
     else:
-        system_prompt = "You are an assitant that is finding difference between orginal and copied code. You will be given an original diff and the copied diff. Your job is to identify which lines the copier missed."
+        system_prompt = "You are helping a software developer determine if their merge of a pull request was successful. The developer had to edit the commit history and just wants to make sure that they have not changed what will be merged. They will list the changed lines. Your job is to figure out if they have missed any insertions or deletions from the original merge. Only pay attention to the insertions and deletions (ignore the context of the diff)."
     
     results = []
     for i in range(min(n_samples, len(dataset))):
-        sample = dataset[i]
+        sample = dataset[i+3]
         if prompt_num == 1:
             user_message = f"Here is the complete original diff: {sample['original_context']}\nAnd here is the merge diff after the developer fixed the commit history: {sample['modified_context']}\n What changed lines (insertions or deletions) present in the original diff are missing in the merge diff (if any)? List only the missing changed lines, nothing else."
         else:
-            user_message = f"Here is the complete Copied Document: {sample['modified_context']}\nList every line from this document. Here is the complete Original Document: {sample['original_context']}\nGo through every line and if you haven't listed a line before then list it. Return only those lines you hadn't listed before, absolutely nothing else."
+            user_message = f'''
+            Example Prompt 0: Here is the complete original diff: {dataset[0]['original_context']}\nAnd here is the merge diff after the developer fixed the commit history: {dataset[0]['modified_context']}\n What changed lines (insertions or deletions) present in the original diff are missing in the merge diff (if any)? List only the missing changed lines, nothing else.
+
+            Example Output 0:
+            "Line::create(['order_id' => $order->id, 'product_id' => $product2->id]);",
+            "$serialized = serialize(new ModelRelationSerializationTestClass($order));",
+            "public $timestamps = false;"
+
+            Example Prompt 1: Here is the complete original diff: {dataset[1]['original_context']}\nAnd here is the merge diff after the developer fixed the commit history: {dataset[1]['modified_context']}\n What changed lines (insertions or deletions) present in the original diff are missing in the merge diff (if any)? List only the missing changed lines, nothing else.
+
+            Example Output 1:
+            "$model->autoloadRelationsUsing($callback);",
+            "$model->autoloadRelationsUsing($callback, $this);",
+            "}}"
+
+            Example Prompt 2: Here is the complete original diff: {dataset[2]['original_context']}\nAnd here is the merge diff after the developer fixed the commit history: {dataset[2]['modified_context']}\n What changed lines (insertions or deletions) present in the original diff are missing in the merge diff (if any)? List only the missing changed lines, nothing else.
+
+            Example Output 2:
+            "'states' => $this->states->prepend(",
+            "public function test_factory_model_has_one_relationship_has_pending_attributes_override()",
+            "(new FactoryTestPostFactory())->has(new FactoryTestCommentFactory(), 'commentsWithFooBarBazAsBody')->create();",
+            "(new FactoryTestPostFactory())->has((new FactoryTestCommentFactory())->state(['body' => 'other body']), 'commentsWithFooBarBazAsBody')->create();",
+            "return $this->hasOne(FactoryTestPost::class, 'user_id')->withAttributes(['title' => 'foo bar baz']);"
+
+            Actual Prompt: Here is the complete original diff: {sample['original_context']}\nAnd here is the merge diff after the developer fixed the commit history: {sample['modified_context']}\n What changed lines (insertions or deletions) present in the original diff are missing in the merge diff (if any)? List only the missing changed lines, nothing else.'''
+
+            #user_message Here is the complete Copied Document: {sample['modified_context']}\nList every line from this document. Here is the complete Original Document: {sample['original_context']}\nGo through every line and if you haven't listed a line before then list it. Return only those lines you hadn't listed before, absolutely nothing else.
 
         try:
             response = client.chat.completions.create(
@@ -120,5 +146,5 @@ def test_github_prs(prompt_num, n_samples=100):
     return avg_f1, overall_f1
 
 if __name__ == "__main__":
-    avg1, overall1 = test_github_prs(1) # First original prompt
+    # avg1, overall1 = test_github_prs(1) # First original prompt
     avg2, overall2 = test_github_prs(2) # Second improved prompt'
