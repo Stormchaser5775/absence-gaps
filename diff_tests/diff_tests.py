@@ -115,7 +115,7 @@ def test_github_prs(prompt_num, n_samples=100):
 
             Actual Prompt: Here is the complete Copied Document: {sample['modified_context']}\nList every line from this document. Here is the complete Original Document: {sample['original_context']}\nGo through every line and if you haven't listed a line before then list it. Return only those lines you hadn't listed before, absolutely nothing else.'''
 
-            #user_message Here is the complete Copied Document: {sample['modified_context']}\nList every line from this document. Here is the complete Original Document: {sample['original_context']}\nGo through every line and if you haven't listed a line before then list it. Return only those lines you hadn't listed before, absolutely nothing else.
+            #user_message = "Here is the complete Copied Document: {sample['modified_context']}\nList every line from this document. Here is the complete Original Document: {sample['original_context']}\nGo through every line and if you haven't listed a line before then list it. Return only those lines you hadn't listed before, absolutely nothing else."
 
         try:
             response = client.chat.completions.create(
