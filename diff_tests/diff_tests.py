@@ -119,7 +119,7 @@ def test_github_prs(prompt_num, n_samples=100):
 
         try:
             response = client.chat.completions.create(
-                model="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
+                model="meta-llama/Llama-3.3-70B-Instruct-Turbo",
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_message}
