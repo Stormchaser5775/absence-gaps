@@ -111,6 +111,8 @@ def loss_fn(system_prompt, query, pred, target, evalu):
 
 llm = tg.get_engine(engine_name="together-meta-llama/Llama-3.3-70B-Instruct-Turbo")
 model = tg.BlackboxLLM(llm, system_prompt=system_prompt)
+MAX_CONTEXT_CHARS = 15000  # ~3750 tokens each, keeps total prompt well under 131k limit
+
 epochs = 3
 for j in range(epochs):
     for batch in tqdm(batches):
@@ -119,8 +121,11 @@ for j in range(epochs):
         for i in range(int(len(batch))):
             sample = batch[i]
 
-            query_string = (f"Here is the orginal document: {sample['original_context']}"
-                        f"Here is the copied document: {sample['modified_context']}"
+            orig = sample['original_context'][:MAX_CONTEXT_CHARS]
+            modified = sample['modified_context'][:MAX_CONTEXT_CHARS]
+
+            query_string = (f"Here is the orginal document: {orig}"
+                        f"Here is the copied document: {modified}"
                         "Return only the missing lines, absolutely nothing else.")
 
             query = tg.Variable(query_string,
