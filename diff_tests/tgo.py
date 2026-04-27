@@ -5,10 +5,19 @@ from together import Together
 from datasets import load_dataset
 from dotenv import load_dotenv
 from typing import List, Dict, Any, Union
+from tqdm import tqdm
 
 load_dotenv()
 client = Together()
 dataset = load_dataset("harveyfin/AbsenceBench", "github_prs", split="validation")
+dataset2 = load_dataset("harveyfin/AbsenceBench", "github_prs", split="validation")
+
+batches = []
+batch_size = max(1, int(len(dataset2) * 0.0122))
+
+for i in range(0, len(dataset2), batch_size):
+    batch = dataset2.select(range(i, min(i + batch_size, len(dataset2))))
+    batches.append(batch)
 
 def evaluate_response_github(response_list: List[Union[str, int]], diff_data: Dict[str, Any]) -> Dict[str, Any]:
     original_lines = diff_data["original_context"].split('\n')
@@ -76,8 +85,8 @@ loss_system_prompt = tg.Variable("""Your job is to provide feedback to a LLM omi
      role_description="System prompt to provide feedback.")
 fields = {"system_prompt": None, "query": None, "pred": None, "target": None, "evalu": None}
 
-tg.set_backward_engine("together-openai/gpt-oss-20b", override=True)
-llm_eval = tg.get_engine(engine_name="together-openai/gpt-oss-20b")
+tg.set_backward_engine("together-openai/gpt-oss-120b", override=True)
+llm_eval = tg.get_engine(engine_name="together-openai/gpt-oss-120b")
 
 formatted_llm_call = tg.autograd.FormattedLLMCall(engine=llm_eval,
                                                        format_string=format_string,
@@ -87,7 +96,6 @@ formatted_llm_call = tg.autograd.FormattedLLMCall(engine=llm_eval,
 system_prompt_string = ("You are model helping a coder find the differences between an original document and a copy which has omitted some lines."
                     "You will be giver two diff documents: an original and a copy"
                     "Go through every line in the copy, and list it."
-                    "Only additions and subtractions (lines starting with + or –) can be omitted"
                     "Go through every line in the original, and if you haven't listed a line before then list it."
                     "Return only those lines you hadn't listed before, absolutely nothing else.")
 
@@ -103,31 +111,38 @@ def loss_fn(system_prompt, query, pred, target, evalu):
 
 llm = tg.get_engine(engine_name="together-meta-llama/Llama-3.3-70B-Instruct-Turbo")
 model = tg.BlackboxLLM(llm, system_prompt=system_prompt)
+epochs = 3
+for j in range(epochs):
+    for batch in tqdm(batches):
+        optimizer.zero_grad()
+        losses = []
+        for i in range(int(len(batch))):
+            sample = batch[i]
 
-for i in range(len(dataset)-int(len(dataset)*0.20)):
-     sample = dataset[i]
+            query_string = (f"Here is the orginal document: {sample['original_context']}"
+                        f"Here is the copied document: {sample['modified_context']}"
+                        "Return only the missing lines, absolutely nothing else.")
 
-     query_string = (f"Here is the orginal document: {sample['original_context']}"
-                    f"Here if the copied document: {sample['modified_context']}")
+            query = tg.Variable(query_string,
+                            role_description="query to the LLM",
+                            requires_grad=False)
+            target = tg.Variable(str(sample['omitted_context']),
+                                role_description="target answer",
+                                requires_grad=False)
+            answer = model(query)
+            evalu_percent = str(round(evaluate_response_github([answer.get_value(), 0], sample)['micro_f1']*100, 5)) + "%"
+            evalu = tg.Variable(evalu_percent,
+                                role_description="Evaluation of the model's answer as a percentage. Keep the prompt under 4000 tokens.",
+                                requires_grad=False)
 
-     query = tg.Variable(query_string,
-                       role_description="query to the LLM",
-                       requires_grad=False)
-     target = tg.Variable(str(sample['omitted_context']),
-                          role_description="target answer",
-                          requires_grad=False)
-     answer = model(query)
-     evalu_string = round(evaluate_response_github([answer.get_value(), 0], sample)['micro_f1'])
-     evalu = tg.Variable(evalu_string,
-                         role_description="Evaluation of the model's answer",
-                         requires_grad=False)
+            answer.set_role_description("concise and accurate answer to the question")
 
-     answer.set_role_description("concise and accurate answer to the question")
-
-     loss = loss_fn(system_prompt, query, answer, target, evalu)
-
-     optimizer.zero_grad()
-     loss.backward()
-     optimizer.step()
-
-     print(system_prompt)
+            mini_loss = loss_fn(system_prompt, query, answer, target, evalu)
+            losses.append(mini_loss)
+        loss = tg.sum(losses)
+        loss.backward()
+        optimizer.step()
+        print("––––––––––– epoch:" + str(j) + " –––––––––––")
+        print(len(system_prompt.get_value()))
+        print(evalu_percent)
+        print(system_prompt)

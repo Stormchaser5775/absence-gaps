@@ -81,40 +81,105 @@ def test_github_prs(prompt_num, n_samples=100):
     if prompt_num == 1:
         system_prompt = "You are helping a software developer determine if their merge of a pull request was successful. The developer had to edit the commit history and just wants to make sure that they have not changed what will be merged. They will list the changed lines. Your job is to figure out if they have missed any insertions or deletions from the original merge. Only pay attention to the insertions and deletions (ignore the context of the diff)."
     else:
-        system_prompt = "You are helping a software developer determine if their merge of a pull request was successful. The developer had to edit the commit history and just wants to make sure that they have not changed what will be merged. They will list the changed lines. Your job is to figure out if they have missed any insertions or deletions from the original merge. Only pay attention to the insertions and deletions (ignore the context of the diff)."
+        system_prompt = '''**OUTPUT ONLY THE RAW MISSING LINES – NO INTRODUCTION, NO MARKDOWN, NO TRAILING NEWLINE.**
+
+        You are a strict omission‑detector assistant.  
+        You will be given two unified‑diff sections: an **original** diff and a **copy** diff that may have omitted some lines.
+
+        **Task**
+        1. **Collect candidate lines** from the original diff (**O**) and from the copy diff (**C**).  
+        A line is a candidate if **and only if** it matches the regular expression  
+
+        ```
+        ^[+-][^\+-]
+        ```
+
+        – the very first character of the line (column 1) is a single `+` or `-`;  
+        – the second character is **not** `+` or `-` (it may be a space, tab, letter, punctuation, etc.).  
+        – No leading whitespace is allowed before the sign.  
+        – Lines that start with the diff‑metadata prefixes `+++`, `---`, `@@`, `diff --git` **or** that begin with `++` or `--` are **ignored** even though they start with `+`/`-`.  
+        – Blank comment lines such as `+     *` are **valid candidates** and must be treated like any other line.  
+
+        2. Compute the set difference **O \ C**: every line that appears in **O** but does **not** appear **verbatim** (character‑for‑character, including all spaces, tabs, and punctuation) in **C**.
+
+        3. Output each line from this difference **in the exact order they appear in O**.  
+        - If a line occurs multiple times in **O** and is missing each time, output it each time, preserving its original position.  
+        - Both added (`+`) and removed (`-`) lines are required; do not give priority to one sign.
+
+        **Output rules**
+        - Print each missing line exactly as it appears in the original diff, preserving the leading sign and **all** following characters (spaces, tabs, backslashes, quotes, etc.).  
+        - Do **not** output any diff metadata, context lines, or any line that is not missing.  
+        - Do **not** wrap the answer in markdown fences, quotes, brackets, or any other markup.  
+        - Do **not** add explanations, headings, bullet points, or any extra characters.  
+        - Each line must be terminated by a single line‑feed **except** after the final line; the very last character of your response must be the last character of the last missing line (no trailing `\n`).  
+        - If there are no missing lines, output **nothing** – an empty string with zero characters (no spaces, no newline).
+
+        **Final verification checklist (must be applied before emitting any output)**
+        1. The line starts with exactly one `+` or `-` at column 1.  
+        2. The line is present in **O**.  
+        3. The identical line does **not** appear in **C**.  
+        4. The line’s relative order matches its position in **O** (preserve original sequence).  
+        5. No characters, whitespace, or formatting have been added, removed, or altered.  
+        6. The overall output ends **without** a trailing newline.
+
+        If any line fails any checklist item, discard that line. If after discarding no lines remain, output an empty string.
+
+        **Examples**
+
+        *Missing line present*
+        ```
+        Original diff:
+        +    foo();
+        -    bar();
+        +    baz();
+
+        Copy diff:
+        +    foo();
+        -    bar();
+
+        Expected output (exact, no extra newline):
+        +    baz();
+        ```
+
+        *Blank comment line*
+        ```
+        Original diff:
+        +     *
+        +     * @param int $x
+
+        Copy diff:
+        +     * @param int $x
+
+        Expected output:
+        +     *
+        ```
+
+        *No missing lines (empty output)*
+        ```
+        Original diff:
+        +    foo();
+        -    bar();
+
+        Copy diff:
+        +    foo();
+        -    bar();
+
+        Expected output: (empty string)
+        ```
+
+        **Important**: Never use ellipsis (`…`) or any placeholder. Never add or infer code that is not explicitly present as a missing line.
+
+        Proceed to compute and output the missing lines according to the rules above.'''
     
     results = []
     for i in range(min(n_samples, len(dataset))):
-        sample = dataset[i+3]
+        sample = dataset[i]
         if prompt_num == 1:
             user_message = f"Here is the complete original diff: {sample['original_context']}\nAnd here is the merge diff after the developer fixed the commit history: {sample['modified_context']}\n What changed lines (insertions or deletions) present in the original diff are missing in the merge diff (if any)? List only the missing changed lines, nothing else."
         else:
-            user_message = f'''
-            Example Prompt 0: Here is the complete original diff: {dataset[0]['original_context']}\nAnd here is the merge diff after the developer fixed the commit history: {dataset[0]['modified_context']}\n What changed lines (insertions or deletions) present in the original diff are missing in the merge diff (if any)? List only the missing changed lines, nothing else.
-
-            Example Output 0:
-            "Line::create(['order_id' => $order->id, 'product_id' => $product2->id]);",
-            "$serialized = serialize(new ModelRelationSerializationTestClass($order));",
-            "public $timestamps = false;"
-
-            Example Prompt 1: Here is the complete original diff: {dataset[1]['original_context']}\nAnd here is the merge diff after the developer fixed the commit history: {dataset[1]['modified_context']}\n What changed lines (insertions or deletions) present in the original diff are missing in the merge diff (if any)? List only the missing changed lines, nothing else.
-
-            Example Output 1:
-            "$model->autoloadRelationsUsing($callback);",
-            "$model->autoloadRelationsUsing($callback, $this);",
-            "}}"
-
-            Example Prompt 2: Here is the complete original diff: {dataset[2]['original_context']}\nAnd here is the merge diff after the developer fixed the commit history: {dataset[2]['modified_context']}\n What changed lines (insertions or deletions) present in the original diff are missing in the merge diff (if any)? List only the missing changed lines, nothing else.
-
-            Example Output 2:
-            "'states' => $this->states->prepend(",
-            "public function test_factory_model_has_one_relationship_has_pending_attributes_override()",
-            "(new FactoryTestPostFactory())->has(new FactoryTestCommentFactory(), 'commentsWithFooBarBazAsBody')->create();",
-            "(new FactoryTestPostFactory())->has((new FactoryTestCommentFactory())->state(['body' => 'other body']), 'commentsWithFooBarBazAsBody')->create();",
-            "return $this->hasOne(FactoryTestPost::class, 'user_id')->withAttributes(['title' => 'foo bar baz']);"
-
-            Actual Prompt: Here is the complete Copied Document: {sample['modified_context']}\nList every line from this document. Here is the complete Original Document: {sample['original_context']}\nGo through every line and if you haven't listed a line before then list it. Return only those lines you hadn't listed before, absolutely nothing else.'''
-
+            user_message = f'''Here is the orginal document: {sample['original_context']}
+            Here is the copied document: {sample['modified_context']}
+            Return only the missing lines, absolutely nothing else.'''
             #user_message = "Here is the complete Copied Document: {sample['modified_context']}\nList every line from this document. Here is the complete Original Document: {sample['original_context']}\nGo through every line and if you haven't listed a line before then list it. Return only those lines you hadn't listed before, absolutely nothing else."
 
         try:
@@ -147,4 +212,4 @@ def test_github_prs(prompt_num, n_samples=100):
 
 if __name__ == "__main__":
     # avg1, overall1 = test_github_prs(1) # First original prompt
-    avg2, overall2 = test_github_prs(2) # Second improved prompt'
+    avg2, overall2 = test_github_prs(2, 30) # Second improved prompt'
